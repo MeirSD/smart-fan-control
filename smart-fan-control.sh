@@ -12,7 +12,8 @@
 #   - Key 190: Airflow_Temperature_Cel
 #   - Key 194: HDA Temperature
 #
-TEMP=$(/usr/local/bin/smartctl -A /dev/disk0 | grep ^190 | awk '{print $10}')
+# Pick the higher of the 2 temperature values for the internal physical disk
+TEMP=$(/usr/local/bin/smartctl -A $(diskutil list |grep "(internal, physical)"| awk '{print $1}') | grep ^19[04] | awk '{print $10}' | sort -n | tail -n1)
 
 #
 # Depending on the actual temperature set a value for the desired fan speed.
@@ -53,12 +54,11 @@ HEXSPEED=$(python -c "print hex($SPEED << 2)[2:]")
 echo "Drive temperature is $TEMP. Setting fan speed to $SPEED"
 
 #
-# Issue command to set the maximum fan speed.
+# Issue command to set and force the target fan speed
 #
-# Note: I'm setting the **maximum** fan speed here to bring the speed down
-# from an artifically high level. This is needed on my iMac, which otherwise
-# would have the HDD fan running at max (6000+) all the time.
+# Note: This should work whether your fan typically runs too fast OR too slow (if your sensor is shorted)
 #
-/usr/local/sbin/smc -k F1Mx -w $HEXSPEED
+/usr/local/sbin/smc -k "FS! " -w 0002
+/usr/local/sbin/smc -k F1Tg -w $HEXSPEED
 
 # End of script.
